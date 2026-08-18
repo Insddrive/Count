@@ -7,7 +7,6 @@
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#ffffff">
     <style>
-        /* ================= ਮਿਨੀਮਲ ਵਾਈਟ ਥੀਮ ਅਤੇ ਮੋਬਾਈਲ ਫਿਕਸ ================= */
         * {
             box-sizing: border-box;
             margin: 0;
@@ -83,6 +82,16 @@
 
         .btn-primary:active {
             background-color: #1d4ed8;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-5px); background-color: #ef4444; } 
+            40%, 80% { transform: translateX(5px); background-color: #ef4444; }
+        }
+
+        .shake-anim {
+            animation: shake 0.4s ease-in-out;
         }
 
         .btn-success {
@@ -173,6 +182,42 @@
             transform-origin: center center;
             cursor: crosshair;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+            min-width: 100%; 
+            min-height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #watermark {
+            position: absolute;
+            font-size: 24px;
+            font-weight: 700;
+            color: #9ca3af; 
+            pointer-events: none;
+            user-select: none;
+            z-index: 1;
+        }
+
+        #toastMessage {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(17, 24, 39, 0.9);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        
+        .show-toast {
+            opacity: 1 !important;
         }
 
         #bgImage {
@@ -183,6 +228,7 @@
             height: auto;
             pointer-events: none;
             border-radius: 4px;
+            z-index: 2;
         }
 
         #dotsContainer {
@@ -192,6 +238,7 @@
             width: 100%;
             height: 100%;
             pointer-events: none;
+            z-index: 3;
         }
 
         .number-marker {
@@ -230,7 +277,7 @@
     
     <div class="toolbar-top">
         <div class="tools-row">
-            <label class="btn btn-primary">
+            <label class="btn btn-primary" id="uploadLabel">
                 <input type="file" id="imageUpload" accept="image/*">
                 Choose Image
             </label>
@@ -252,8 +299,11 @@
         </div>
     </div>
 
+    <div id="toastMessage">Upload any Photo</div>
+
     <div id="wrapper" class="work-area-container">
         <div id="workArea">
+            <div id="watermark">Select Any Image</div>
             <img id="bgImage" src="" alt="Uploaded Image">
             <div id="dotsContainer"></div>
         </div>
@@ -271,6 +321,10 @@
         const bgImage = document.getElementById('bgImage');
         const countDisplay = document.getElementById('countDisplay');
         const wrapper = document.getElementById('wrapper');
+        
+        const uploadLabel = document.getElementById('uploadLabel');
+        const watermark = document.getElementById('watermark');
+        const toastMessage = document.getElementById('toastMessage');
 
         const undoBtn = document.getElementById('undoBtn');
         const redoBtn = document.getElementById('redoBtn');
@@ -281,6 +335,8 @@
         const increaseBtn = document.getElementById('increaseSize');
         const decreaseBtn = document.getElementById('decreaseSize');
         let currentDotSize = 10; 
+        
+        let isImageUploaded = false; 
 
         let currentDots = [];
         let history = [[]];
@@ -294,6 +350,7 @@
         let startDist = 0;
         let isDragging = false;
         let moveDistance = 0;
+        let toastTimeout; 
 
         increaseBtn.addEventListener('click', () => {
             if(currentDotSize < 100) {
@@ -316,6 +373,9 @@
                 
                 bgImage.onload = function() {
                     bgImage.style.display = 'block';
+                    watermark.style.display = 'none'; 
+                    isImageUploaded = true;
+                    
                     currentScale = 1;
                     panX = 0;
                     panY = 0;
@@ -340,6 +400,7 @@
         }
 
         wrapper.addEventListener('touchstart', (e) => {
+            if (!isImageUploaded) return; 
             if (e.touches.length === 1) {
                 isDragging = true;
                 moveDistance = 0;
@@ -358,6 +419,7 @@
         }, { passive: false });
 
         wrapper.addEventListener('touchmove', (e) => {
+            if (!isImageUploaded) return;
             e.preventDefault(); 
             
             if (e.touches.length === 1 && isDragging) {
@@ -417,10 +479,34 @@
         });
 
         workArea.addEventListener('click', (e) => {
+            if (!isImageUploaded) {
+                uploadLabel.classList.remove('shake-anim');
+                void uploadLabel.offsetWidth; 
+                uploadLabel.classList.add('shake-anim');
+                
+                toastMessage.classList.add('show-toast');
+                clearTimeout(toastTimeout);
+                toastTimeout = setTimeout(() => {
+                    toastMessage.classList.remove('show-toast');
+                }, 1500);
+                return;
+            }
+
             if (e.target.classList.contains('number-marker')) return;
             if (moveDistance > 10) return; 
 
-            const rect = workArea.getBoundingClientRect();
+            // ਫੋਟੋ ਦੀ ਅਸਲ ਜਗ੍ਹਾ (Bounding Box) ਚੈੱਕ ਕਰਨ ਦਾ ਸਹੀ ਲੌਜਿਕ
+            const rect = bgImage.getBoundingClientRect();
+            
+            // ਜੇਕਰ ਕਲਿੱਕ ਫੋਟੋ ਦੇ ਏਰੀਏ ਤੋਂ ਬਾਹਰ ਹੈ, ਤਾਂ ਕੁਝ ਨਾ ਕਰੋ
+            if (
+                e.clientX < rect.left || 
+                e.clientX > rect.right || 
+                e.clientY < rect.top || 
+                e.clientY > rect.bottom
+            ) {
+                return; 
+            }
             
             const x = (e.clientX - rect.left) / currentScale;
             const y = (e.clientY - rect.top) / currentScale;
@@ -467,16 +553,16 @@
                 const numberElem = document.createElement('div');
                 numberElem.className = 'number-marker';
                 
-                numberElem.style.left = dot.x + 'px';
-                numberElem.style.top = dot.y + 'px';
+                numberElem.style.left = `calc(50% - ${bgImage.offsetWidth/2}px + ${dot.x}px)`;
+                numberElem.style.top = `calc(50% - ${bgImage.offsetHeight/2}px + ${dot.y}px)`;
+                
                 numberElem.style.fontSize = dot.size + 'px'; 
                 numberElem.textContent = index + 1;
 
-                // ਆਖਰੀ ਨੰਬਰ ਨੂੰ ਲਾਲ (Red) ਰੰਗ ਦੇਣਾ
                 if (index === currentDots.length - 1) {
-                    numberElem.style.color = '#ff0000'; // Red
+                    numberElem.style.color = '#ff0000'; 
                 } else {
-                    numberElem.style.color = '#00ffff'; // Cyan
+                    numberElem.style.color = '#00ffff'; 
                 }
 
                 numberElem.addEventListener('click', (e) => {
@@ -508,8 +594,8 @@
 
             ctx.drawImage(bgImage, 0, 0);
 
-            const ratioX = bgImage.naturalWidth / bgImage.width;
-            const ratioY = bgImage.naturalHeight / bgImage.height;
+            const ratioX = bgImage.naturalWidth / bgImage.offsetWidth;
+            const ratioY = bgImage.naturalHeight / bgImage.offsetHeight;
 
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
@@ -521,11 +607,10 @@
 
                 ctx.font = `900 ${finalSize}px system-ui, -apple-system, sans-serif`;
                 
-                // ਡਾਊਨਲੋਡ ਹੋਣ ਵਾਲੀ ਫੋਟੋ ਵਿੱਚ ਵੀ ਆਖਰੀ ਨੰਬਰ ਲਾਲ ਕਰਨਾ
                 if (index === currentDots.length - 1) {
-                    ctx.fillStyle = '#ff0000'; // Red
+                    ctx.fillStyle = '#ff0000'; 
                 } else {
-                    ctx.fillStyle = '#00ffff'; // Cyan
+                    ctx.fillStyle = '#00ffff'; 
                 }
                 
                 ctx.strokeStyle = '#000000';    
