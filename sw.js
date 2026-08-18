@@ -1,4 +1,4 @@
-const CACHE_NAME = 'count-app-v1';
+const CACHE_NAME = 'count-app-v2';
 const urlsToCache = [
     './',
     './index.html',
@@ -11,6 +11,21 @@ self.addEventListener('install', event => {
             .then(cache => {
                 return cache.addAll(urlsToCache);
             })
+    );
+    self.skipWaiting(); // ਨਵੇਂ ਸਰਵਿਸ ਵਰਕਰ ਨੂੰ ਤੁਰੰਤ ਐਕਟਿਵ ਕਰਨ ਲਈ
+});
+
+self.addEventListener('activate', event => {
+    event.waitUntil(
+        caches.keys().then(cacheNames => {
+            return Promise.all(
+                cacheNames.map(cacheName => {
+                    if (cacheName !== CACHE_NAME) {
+                        return caches.delete(cacheName); // ਪੁਰਾਣੀ ਕੈਸ਼ ਕਲੀਅਰ ਕਰਨਾ
+                    }
+                })
+            );
+        })
     );
 });
 
