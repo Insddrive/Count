@@ -7,6 +7,7 @@
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#ffffff">
     <style>
+        /* ================= ਮਿਨੀਮਲ ਵਾਈਟ ਥੀਮ ਅਤੇ ਮੋਬਾਈਲ ਫਿਕਸ ================= */
         * {
             box-sizing: border-box;
             margin: 0;
@@ -199,7 +200,6 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #00ffff; 
             font-weight: 900;
             text-shadow: 0.1em 0.1em 0 #000, -0.1em -0.1em 0 #000, 0.1em -0.1em 0 #000, -0.1em 0.1em 0 #000, 0 0 0.1em #000;
             pointer-events: auto;
@@ -472,6 +472,13 @@
                 numberElem.style.fontSize = dot.size + 'px'; 
                 numberElem.textContent = index + 1;
 
+                // ਆਖਰੀ ਨੰਬਰ ਨੂੰ ਲਾਲ (Red) ਰੰਗ ਦੇਣਾ
+                if (index === currentDots.length - 1) {
+                    numberElem.style.color = '#ff0000'; // Red
+                } else {
+                    numberElem.style.color = '#00ffff'; // Cyan
+                }
+
                 numberElem.addEventListener('click', (e) => {
                     e.stopPropagation(); 
                     if (moveDistance > 10) return; 
@@ -513,7 +520,14 @@
                 const finalSize = dot.size * ratioX; 
 
                 ctx.font = `900 ${finalSize}px system-ui, -apple-system, sans-serif`;
-                ctx.fillStyle = '#00ffff';      
+                
+                // ਡਾਊਨਲੋਡ ਹੋਣ ਵਾਲੀ ਫੋਟੋ ਵਿੱਚ ਵੀ ਆਖਰੀ ਨੰਬਰ ਲਾਲ ਕਰਨਾ
+                if (index === currentDots.length - 1) {
+                    ctx.fillStyle = '#ff0000'; // Red
+                } else {
+                    ctx.fillStyle = '#00ffff'; // Cyan
+                }
+                
                 ctx.strokeStyle = '#000000';    
                 ctx.lineWidth = Math.max(1, finalSize * 0.15); 
 
